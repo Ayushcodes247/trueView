@@ -2,9 +2,10 @@
   "name": "trueview",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "npx nodemon server.js"
   },
   "repository": {
     "type": "git",
@@ -13,9 +14,34 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "_moduleAliases": {
+    "@controllers": "./controllers",
+    "@models": "./models",
+    "@libs": "./libs",
+    "@routes": "./routes",
+    "@middlewares": "./middlewares",
+    "@root": "/"
+  },
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/Ayushcodes247/trueView/issues"
   },
-  "homepage": "https://github.com/Ayushcodes247/trueView#readme"
+  "homepage": "https://github.com/Ayushcodes247/trueView#readme",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.2.3",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "express-session": "^1.18.2",
+    "imagekit": "^6.0.0",
+    "module-alias": "^2.2.3",
+    "mongoose": "^8.19.3",
+    "multer": "^2.0.2",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-local": "^1.0.0",
+    "socket.io": "^4.8.1",
+    "tus-js-client": "^4.3.1"
+  }
 }
