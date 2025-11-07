@@ -16,4 +16,30 @@ router.get("/", async (req, res) => {
     res.render("devtube", { page: "home" });
 });
 
+router.get("/search", async (req, res) => {
+    res.render("devtube", {
+        page : "search",
+        search : req.query.search
+    });
+});
+
+router.get(/^\/@(\w+)$/, getChannelAndSubscription);
+router.get(/^\/@(\w+)\/videos$/, getChannelAndSubscription);
+router.get(/^\/@(\w+)\/shorts$/, getChannelAndSubscription);
+
+router.get("/upload", checkChannel , isLoggedIn , (req, res) => {
+    res.redirect(`/studio/channel/${req.channel.uid}/content?d=ud`);
+});
+
+router.get("/hashtag/:name", async (req, res) => {
+    const hashTag = await Tag.findOne({ name : req.params.name });
+    res.render("devtube", { page : "hashTag" , hashTag });
+});
+
+router.get("/shorts/:uid", async (req, res) => {
+    res.render("devtube", { page : "shorts" , uid : req.params.uid });
+});
+
+router.get("/404", async (req, res) => res.render("404"));
+
 module.exports = router;

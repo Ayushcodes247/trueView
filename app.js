@@ -11,6 +11,7 @@ const passport = require("./config");
 const morgan = require("morgan");
 const helmet = require("helmet");
 const routes = require("./routes");
+const sessionStore = require("@libs/sessionStore");
 
 require("@libs/db");
 
@@ -29,6 +30,7 @@ app.use(
     secret: process.env.SESSION_SECRET || "secret",
     resave: false,
     saveUninitialized: false,
+    store: sessionStore,
   })
 );
 app.use(passport.initialize());
@@ -58,7 +60,7 @@ app.use(async (req, res, next) => {
 app.use("/", checkDBConnection, routes);
 
 app.use((req, res) => {
-  res.statusCode(404).render("404");
+  res.status(404).render("404");
 });
 
 module.exports = app;
