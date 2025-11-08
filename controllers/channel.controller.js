@@ -31,7 +31,7 @@ module.exports.createChannel = async (req, res) => {
     }
 
     const collectionResponse = await axios.post(
-      `https://video.bunnycdn.com/library/${process.env.BUNNY_STREAM_LIBRARY_ID}/collectios`,
+      `https://video.bunnycdn.com/library/${process.env.BUNNY_STREAM_LIBRARY_ID}/collections`,
       { name: uid },
       {
         headers: {
@@ -53,6 +53,7 @@ module.exports.createChannel = async (req, res) => {
 
     return res
       .status(200)
+      .redirect("/")
       .json({ success: true, message: "Channel created successfully", uid });
   } catch (error) {
     console.error("Error while creating channel:", error);

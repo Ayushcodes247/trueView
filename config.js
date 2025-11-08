@@ -8,7 +8,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "/api/auth/google/callback",
+      callbackURL: "http://localhost:4000/api/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, cb) => {
       try {
@@ -19,7 +19,7 @@ passport.use(
             profile.emails[0].value.split("@")[0]
           );
           channel = await Channel.create({
-            name: profile.name,
+              name: `${profile.name.givenName} ${profile.name.familyName}`,
             handle: handle,
             email: profile.emails[0].value,
             logoURL: profile.photos[0].value.split("=")[0],

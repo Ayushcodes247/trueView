@@ -42,4 +42,9 @@ router.get("/shorts/:uid", async (req, res) => {
 
 router.get("/404", async (req, res) => res.render("404"));
 
+router.use("/api", api);
+router.use("/watch", watch);
+router.use("/channel", channel);
+router.use("/studio", isLoggedIn, checkChannel, studio);
+
 module.exports = router;
