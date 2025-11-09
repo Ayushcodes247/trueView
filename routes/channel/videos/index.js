@@ -1,59 +1,49 @@
-const {
-  checkChannel,
-  asyncHandler,
-  isLoggedIn,
-} = require("@middlewares/all.middleware");
-const {
-  createVideo,
-  deleteVideo,
-  createUpload,
-  getVideo,
-  canEdit,
-  getVideos,
-} = require("@controllers/video.controller");
-const express = require("express");
-const multer = require("multer");
-const path = require("path");
-const {
-  createComment,
-  getComments,
-} = require("@controllers/comment.controller");
+const { checkChannel, asyncHandler, isLoggedIn } = require("@middlewares/all.middleware")
+const { createVideo, deleteVideo, createUpload, getVideo, canEdit, getVideos } = require("@controllers/video.controller")
+const express = require("express")
+const multer = require("multer")
+const path = require('path')
+const { createComment, getComments } = require("@controllers/comment.controller")
 
-const router = express.Router();
+const router = express.Router()
 
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "./public/temp-upload/");
-  },
-  filename: function (req, file, cb) {
-    const uniqueName =
-      Date.now() +
-      "-" +
-      Math.round(Math.random() * 1e9) +
-      path.extname(file.originalname);
-    cb(null, uniqueName);
-  },
-});
+    destination: function (req, file, cb) {
+        cb(null, './public/temp-upload/')
+    },
+    filename: function (req, file, cb) {
+        const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname)
+        cb(null, uniqueName)
+    }
+})
 
-router.get("/get-video/:id", checkChannel, isLoggedIn, getVideo);
 
-router.get("/can-edit/:id", checkChannel, isLoggedIn, canEdit);
+//get video api
+router.get('/get-video/:id', checkChannel, isLoggedIn, getVideo)
 
-router.post("/upload", isLoggedIn, asyncHandler(createVideo));
+//check video edit api
+router.get('/can-edit/:id', checkChannel, isLoggedIn, canEdit)
 
-router.post("/create-upload", isLoggedIn, asyncHandler(createUpload));
+//upload video to bunny api
+router.post('/upload', isLoggedIn, asyncHandler(createVideo))
 
-router.post(
-  "/create-video",
-  isLoggedIn,
-  multer({ storage: storage }).single("thumbnail"),
-  asyncHandler(createVideo)
-);
+//create video on bunny  api
+router.post('/create-upload', isLoggedIn, asyncHandler(createUpload))
 
-router.get("/delete/:videoId", isLoggedIn, deleteVideo);
+//create video on bunny  api
+router.post('/create-video', isLoggedIn, multer({ storage: storage }).single('thumbnail'), asyncHandler(createVideo))
 
-router.post("/comment/:videoId", isLoggedIn, createComment);
+//delete video 
+router.get('/delete/:videoId', isLoggedIn, deleteVideo)
 
-router.get("/:videoId/comments", getComments);
+//send comments  
+router.post('/comment/:videoId', isLoggedIn, createComment)
 
-module.exports = router;
+//get comments  
+router.get('/:videoId/comments', getComments)
+
+
+
+module.exports = router
+
+

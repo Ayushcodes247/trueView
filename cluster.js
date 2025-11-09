@@ -9,7 +9,7 @@ const process = require("process");
 const app = require("./app"); // Express app
 
 const numCpus = os.cpus().length;
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.SERVER_PORT || 4000;
 const WORKER_SHUTDOWN_TIMEOUT = 30_000; // 30 seconds
 const log = (...args) => console.log(new Date().toISOString(), ...args);
 
@@ -52,7 +52,7 @@ if (cluster.isPrimary) {
   });
 
   // Health check server on separate port
-  const HEALTH_PORT = 3000;
+  const HEALTH_PORT = 3001;
   const healthServer = http.createServer((req, res) => {
     if (req.url === "/health" && req.method === "GET") {
       const totalWorkers = Object.keys(cluster.workers).length;

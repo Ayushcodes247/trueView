@@ -1,58 +1,80 @@
+// ---------------------------
+// app.js — Express App Setup (No Server Listen Here)
+// ---------------------------
+
+// Register module alias for cleaner import paths
 require("module-alias/register");
-const dotenv = require("dotenv");
-dotenv.config();
 
-const express = require("express");
-const app = express();
-
+// Import required modules
+const http = require("http");
 const path = require("path");
+const passport = require("./config"); // Passport configuration
 const session = require("express-session");
-const passport = require("./config");
+const express = require("express");
+const socketio = require("socket.io");
+const sessionStorage = require("@libs/sessionStore");
 const morgan = require("morgan");
 const helmet = require("helmet");
-const routes = require("./routes");
-const sessionStore = require("@libs/sessionStore");
-const http = require("http");
+// Create an Express application
+const app = express();
+
+// Create an HTTP server (for use in cluster worker)
 const server = http.createServer(app);
-const socketIO = require("socket.io");
-const io = socketIO(server);
 
-const PORT = process.env.PORT || 3001;
+// Attach Socket.io
+const io = socketio(server);
+io.on("connection", (socket) => {
+  console.info("A client connected");
+});
 
-require("@libs/db");
+// ---------------------------
+// Database & Middleware Setup
+// ---------------------------
+
+require("@libs/db"); // Initialize DB
 
 const { checkDBConnection } = require("@middlewares/all.middleware");
+const Channel = require("@models/channel.model");
 
+// View engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
-app.use(morgan("combined"));
-
+// Serve static files
 app.use(express.static("public"));
+
+// Request parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Session management
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "secret",
+    secret: "secret",
     resave: false,
+    store: sessionStorage,
     saveUninitialized: false,
-    store: sessionStore,
   })
 );
+
+// Passport setup
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(checkDBConnection);
+// Logging middleware
+app.use(morgan("combined"));
 
-app.get("/health", (req, res) => res.status(200).json({ status: "ok" }));
+app.use(helmet());
+app.use(helmet.hsts({ maxAge: 31536000, includeSubDomains: true }));
+
+// Custom middleware
+app.use(checkDBConnection);
 
 if (process.env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
 
-app.use(helmet());
-app.use(helmet.hsts({ maxAge: 3153600, includeSubDomains: true }));
-
+// Attach user data to views
 app.use(async (req, res, next) => {
   res.locals.isCreateChannel = false;
   if (req.user) {
@@ -63,56 +85,35 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// ---------------------------
+// Routes
+// ---------------------------
+const routes = require("./routes");
 app.use("/", checkDBConnection, routes);
 
+// 404 handler
 app.use((req, res) => {
   res.status(404).render("404");
 });
 
-server.listen(PORT, () => {
-  console.log(
-    `[${new Date().toISOString()}] TrueView Server is running on port ${PORT}`
-  );
-});
-
-// Handle unhandled promise rejections
+// ---------------------------
+// Error Handling
+// ---------------------------
 process.on("unhandledRejection", (reason, promise) => {
   console.error(
-    `[${new Date().toISOString()}] Unhandled Rejection at:`,
-    promise,
-    "reason:",
-    reason
+    `[${new Date().toISOString()}] Unhandled Rejection:`,
+    reason,
+    "at:",
+    promise
   );
 });
 
-// Handle uncaught exceptions
 process.on("uncaughtException", (error) => {
   console.error(`[${new Date().toISOString()}] Uncaught Exception:`, error);
-  process.exit(1); // Exit process to allow process manager (e.g., PM2) to restart
+  process.exit(1);
 });
 
-// Graceful shutdown on termination signals
-const gracefulShutdown = (signal) => {
-  console.log(
-    `[${new Date().toISOString()}] Received ${signal}. Closing server gracefully...`
-  );
-  server.close(() => {
-    console.log(
-      `[${new Date().toISOString()}] Server closed. Exiting process.`
-    );
-    process.exit(0);
-  });
-
-  // Force exit if server hangs after 30s
-  setTimeout(() => {
-    console.error(
-      `[${new Date().toISOString()}] Forcefully exiting process due to timeout.`
-    );
-    process.exit(1);
-  }, 30_000).unref();
-};
-
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-
-module.exports = { app, io };
+// ---------------------------
+// Export for Cluster.js
+// ---------------------------
+module.exports = app;

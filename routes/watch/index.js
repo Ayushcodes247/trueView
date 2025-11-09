@@ -7,9 +7,10 @@ const { isLoggedIn } = require("@middlewares/all.middleware");
 const express = require("express");
 const router = express.Router();
 
-router.get("/", async (req, res) => {
-  res.render("devtube", await getPlayerLink(req, res));
-});
+//Watch Video Page
+router.get("/", async (req, res) =>
+  res.render("devtube", await getPlayerLink(req, res))
+);
 
 router.get("/react/:videoId", isLoggedIn, updateVideoLikesDislikes);
 

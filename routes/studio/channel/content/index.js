@@ -8,7 +8,7 @@ const shorts = require("./shorts");
 const live = require("./live");
 const playlists = require("./playlists");
 
-router.get("/", async (req, res) => {
+router.get("/*", async (req, res) => {
   const criteria = {
     channel: req.channel._id,
     page: 1,

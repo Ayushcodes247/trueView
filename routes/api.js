@@ -8,7 +8,7 @@ const {
   notificationsChannel,
 } = require("@controllers/channel.controller");
 const passport = require("passport");
-const axios = require("axios");
+const { default: axios } = require("axios");
 
 const crypto = require("crypto");
 const { createUniqueHandle } = require("@libs/utils");
@@ -21,18 +21,20 @@ const {
 
 const router = express.Router();
 
+//check if handle is already registered
 router.get("/checkHandle", async (req, res) => {
   if (
-    !!(await Channel.findOne({ handle: req.query?.handle })) &&
-    req.query?.handle !== req.channel?.handle
+    !!(await Channel.findOne({ handle: req.query.handle })) &&
+    req.query.handle !== req.channel?.handle
   )
     return res.json({
       exists: true,
-      suggestedHandle: await createUniqueHandle(req.query?.handle),
+      suggestedHandel: await createUniqueHandle(req.query.handle),
     });
   res.json({ exists: false });
 });
 
+//update video status via bunny webhook
 router.post("/updateStatus", async (req, res) => {
   const { VideoGuid, Status } = req.body;
 
@@ -71,12 +73,16 @@ router.post("/updateStatus", async (req, res) => {
   }
 });
 
+//subscribe to channel
 router.get("/subscribe/:uid", subscribeChannel);
 
+//unsubscribe a channel
 router.get("/unsubscribe/:uid", unsubscribeChannel);
 
+//notification mode
 router.get("/notification/:uid/:mode", notificationsChannel);
 
+//get player from bunny by videoId & thumbnailName as query parameter
 router.get("/getThumbnail", async (req, res) => {
   try {
     const { videoId, thumbnailName } = req.query;
@@ -88,7 +94,7 @@ router.get("/getThumbnail", async (req, res) => {
 
     const expires = Math.round(Date.now() / 1000) + 3600;
 
-    const base = process.env.BUNNY_API_KEY + path + expires;
+    const base = process.env.BUNNY_TOKEN_KEY + path + expires;
 
     const md5Hash = crypto.createHash("md5").update(base).digest("binary");
 
@@ -96,7 +102,7 @@ router.get("/getThumbnail", async (req, res) => {
 
     token = token.replace(/\+/g, "-").replace(/\//g, "_").replace(/\=/g, "");
 
-    const imageUrl = `https://${process.env.BUNNY_HOSTNAME}${path}?token=${token}&expires=${expires}`;
+    const imageUrl = `https://${process.env.BUNNY_CDN_HOSTNAME}${path}?token=${token}&expires=${expires}`;
 
     const response = await axios.get(imageUrl, {
       responseType: "arraybuffer",
@@ -109,36 +115,42 @@ router.get("/getThumbnail", async (req, res) => {
   }
 });
 
+//get player from bunny by video id
 router.get("/player/:id", (req, res) => {
   const videoId = req.params.id;
 
-  const expiration = Math.floor(Date.now() / 1000) + 3600;
+  const expiration = Math.floor(Date.now() / 1000) + 3600; // 3600 seconds = 1 hour
 
   const data = process.env.BUNNY_TOKEN_KEY + videoId + expiration;
 
   const token = crypto.createHash("sha256").update(data).digest("hex");
 
-  const secureUrl = `https://iframe.mediadelivery.net/embed/${process.env.BUNNY_STREAM_LIBRARY_ID}/${videoId}?token=${token}&expires=${expiration}`;
+  const secureUrl = `https://iframe.mediadelivery.net/embed/${process.env.BUNNY_LIBRARY_ID}/${videoId}?token=${token}&expires=${expiration}`;
 
   res.redirect(secureUrl);
 });
 
+//get shorts
 router.get("/shorts", getShorts);
 
+//get videos
 router.get("/videos", getPublicVideos);
 router.get("/hashtag/:tag/videos", getTagVideos);
 
+//login with google
 router.get(
   "/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
+//google login callback
 router.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => res.redirect("/")
 );
 
+//logout
 router.get("/logout", (req, res) => {
   req.logout((err) => {
     if (err) {

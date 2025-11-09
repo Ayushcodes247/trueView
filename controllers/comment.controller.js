@@ -3,7 +3,7 @@ const Channel = require("@models/channel.model");
 const Comment = require("@models/comment.model");
 const Video = require("@models/video.model");
 
-module.exports.createComment = async (req, res) => {
+const createComment = async (req, res) => {
   try {
     const { text } = req.body;
     const videoId = req.params.videoId;
@@ -29,21 +29,19 @@ module.exports.createComment = async (req, res) => {
     video.comments.push(newComment._id);
     await video.save();
 
-    return res.status(201).json({
-      comments: formatNumber(video.comments.length),
-      comment: [newComment],
-    });
+    res
+      .status(201)
+      .json({
+        comments: formatNumber(video.comments.length),
+        comment: [newComment],
+      });
   } catch (error) {
-    console.error("Error while commenting:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error.",
-      error: error.message,
-    });
+    console.error("Error creating comment:", error);
+    res.status(500).json({ error: "Server error" });
   }
 };
 
-module.exports.updateCommentLikesDislikes = async (req, res) => {
+const updateCommentLikesDislikes = async (req, res) => {
   try {
     const comment = await Comment.findById(req.params.id);
     if (!comment) return res.status(404).json({ error: "Comment not found" });
@@ -51,11 +49,13 @@ module.exports.updateCommentLikesDislikes = async (req, res) => {
     const { action } = req.query;
     const channelId = req.channel.id;
 
+    // Ensure the channel exists
     const channelExists = await Channel.findById(channelId);
     if (!channelExists) {
       return res.status(400).json({ error: "Invalid channel ID" });
     }
 
+    // Prepare the update
     const update = {
       $pull: { [action === "like" ? "dislikes" : "likes"]: channelId },
       ...(action === "like"
@@ -76,19 +76,16 @@ module.exports.updateCommentLikesDislikes = async (req, res) => {
       update,
       { new: true }
     );
-
-    return res.status(200).json({
+    res.status(200).json({
       likes: updatedComment.likes.length,
     });
   } catch (error) {
     console.error(error);
-    return res
-      .status(500)
-      .json({ error: `Error updating comment: ${error.message}` });
+    res.status(500).json({ error: `Error updating comment: ${error.message}` });
   }
 };
 
-module.exports.replyToComment = async (req, res) => {
+const replyToComment = async (req, res) => {
   try {
     const { id } = req.params;
     const { video, text } = req.body;
@@ -98,6 +95,7 @@ module.exports.replyToComment = async (req, res) => {
       return res.status(404).json({ error: "Comment not found" });
     }
 
+    // Verify if video and channel exist
     const videoExists = await Video.findById(video);
     const channelExists = await Channel.findById(req.channel.id);
 
@@ -111,13 +109,13 @@ module.exports.replyToComment = async (req, res) => {
     comment.replies.push(newReply._id);
     await comment.save();
 
-    return res.status(201).json(newReply);
+    res.status(201).json(newReply);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-module.exports.deleteComment = async (req, res) => {
+const deleteComment = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -126,22 +124,22 @@ module.exports.deleteComment = async (req, res) => {
       return res.status(404).json({ error: "Comment not found" });
     }
 
-    return res.status(200).json({ message: "Comment deleted successfully" });
+    res.status(200).json({ message: "Comment deleted successfully" });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-module.exports.getComments = async (req, res) => {
+const getComments = async (req, res) => {
   try {
     const { videoId } = req.params;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = parseInt(req.query.page) || 1; // Default page 1
+    const limit = parseInt(req.query.limit) || 10; // Default limit 10
 
     const skip = (page - 1) * limit;
 
     const comments = await Comment.find({ video: videoId })
-      .sort({ postedDate: -1 })
+      .sort({ postedDate: -1 }) // Sort by newest first
       .skip(skip)
       .limit(limit)
       .populate({
@@ -161,4 +159,12 @@ module.exports.getComments = async (req, res) => {
     console.error("Error fetching comments:", error);
     res.status(500).json({ error: "Server error" });
   }
+};
+
+module.exports = {
+  createComment,
+  updateCommentLikesDislikes,
+  replyToComment,
+  deleteComment,
+  getComments,
 };

@@ -1,280 +1,242 @@
-const { imagekit } = require("@libs/db");
-const { generateID } = require("@libs/utils");
-const Channel = require("@models/channel.model");
-const Subscription = require("@models/subscription.model");
-const axios = require("axios");
+// Import necessary modules and utilities
+const { imageKit } = require("@libs/db")
+const { generateID } = require("@libs/utils")
+const Channel = require("@models/channel.model")
+const Subscription = require("@models/subscription.model")
+const { default: axios } = require('axios')
 
-module.exports.createChannel = async (req, res) => {
+// Create a new channel
+const createChannel = async (req, res) => {
   try {
-    const channel = req.channel;
-    const uid = generateID(channel.id);
+    const channel = req.channel
+    const uid = generateID(channel.id)
 
-    if (
-      req.query.handle &&
-      (await Channel.findOne({ handle: req.query.handle })) &&
-      req.query.handle !== req.channel.uid
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Channel handle already exists" });
+    // Check if the handle already exists and is not the same as the current channel's handle
+    if (req.query.handle && (await Channel.findOne({ handle: req.query.handle })) && req.query.handle !== req.channel.uid) {
+      return res.status(400).json({ message: "Channel handle already exists" })
     }
 
+    // Upload logo to ImageKit if file is attached
     if (req.file) {
-      const response = await imagekit.upload({
-        file: req.file?.buffer,
-        fileName: req.file?.originalname,
-      });
+      const response = await imageKit.upload({
+        file: req.file.buffer,
+        fileName: req.file.originalname,
+      })
 
-      if (response.url) {
-        channel.logoURL = response.url;
-      }
+      if (response.url) channel.logoURL = response.url
     }
 
+    // Create a collection for the channel using BunnyCDN
     const collectionResponse = await axios.post(
-      `https://video.bunnycdn.com/library/${process.env.BUNNY_STREAM_LIBRARY_ID}/collections`,
+      `https://video.bunnycdn.com/library/${process.env.BUNNY_LIBRARY_ID}/collections`,
       { name: uid },
-      {
-        headers: {
-          AccessKey: process.env.BUNNY_API_KEY,
-        },
-      }
-    );
+      { headers: { AccessKey: process.env.BUNNY_API_KEY } }
+    )
+    const { guid: collectionId } = collectionResponse.data
 
-    const { guid: collectionId } = collectionResponse.data;
-
+    // Update channel details
     Object.assign(channel, {
       handle: req.body.handle,
       name: req.body.name,
       collectionId,
-      uid,
-    });
+      uid
+    })
 
-    await channel.save();
+    // Save the channel to the database
+    await channel.save()
 
-    return res
-      .status(200)
-      .redirect("/")
-      .json({ success: true, message: "Channel created successfully", uid });
+    res.status(200).json({ message: "Channel created successfully", uid })
   } catch (error) {
-    console.error("Error while creating channel:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error.",
-      error: error.message,
-    });
+    console.error("Channel creation error:", error)
+    res.status(500).json({ error: "Oops! Something went wrong while creating the channel." })
   }
-};
+}
 
-module.exports.updateChannel = async (req, res) => {
+const updateChannel = async (req, res) => {
   try {
-    const channel = req.channel;
+    const channel = req.channel
 
     if (req.files?.logo) {
-      const response = await imagekit.upload({
-        file: req.files?.logo[0].buffer,
+      const response = await imageKit.upload({
+        file: req.files.logo[0].buffer,
         fileName: req.files.logo[0].originalname,
-      });
+      })
 
-      if (response.url) {
-        channel.logoURL = response.url;
-      }
+      if (response.url) channel.logoURL = response.url
     }
 
     if (req.files?.banner) {
-      const response = await imagekit.upload({
-        file: req.files?.banner[0].buffer,
-        fileName: req.files?.banner[0].originalname,
-      });
+      const response = await imageKit.upload({
+        file: req.files.banner[0].buffer,
+        fileName: req.files.banner[0].originalname,
+      })
 
-      if (response.url) {
-        channel.bannerImageURL = response.url;
-      }
+      if (response.url) channel.bannerImageURL = response.url
     }
 
+    // Update channel details
     Object.assign(channel, {
-      handle: req.body?.handle,
-      name: req.body?.name,
-      description: req.body?.description,
-    });
+      handle: req.body.handle,
+      name: req.body.name,
+      description: req.body.description,
+    })
 
-    await channel.save();
+    // Save the channel to the database
+    await channel.save()
 
-    return res
-      .status(200)
-      .json({ success: true, message: "Channel updated successfully." });
+    res.status(200).json({ message: "Channel updated successfully" })
   } catch (error) {
-    console.error("Error while updating the channel:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error.",
-      error: error.message,
-    });
+    console.error("Channel update error:", error)
+    res.status(500).json({ error: "Oops! Something went wrong while creating the channel." })
   }
-};
+}
 
-module.exports.getChannelByHandle = async (handle) => {
+
+// Fetch a channel by its handle
+const getChannelByHandle = async (handle) => {
   try {
-    return await Channel.findOne({ handle });
+    return await Channel.findOne({ handle })
   } catch (error) {
-    console.error("Error while fetching channel by handle:", error);
-    throw new Error("Failed to fetch channel by handle");
+    console.error("Error fetching channel by handle:", error)
+    throw new Error("Failed to fetch channel by handle")
   }
-};
+}
 
-module.exports.getChannelByUid = async (uid) => {
+// Fetch a channel by its UID
+const getChannelByUid = async (uid) => {
   try {
-    return await Channel.findOne({ uid });
+    return await Channel.findOne({ uid })
   } catch (error) {
-    console.error("Error while fetching channel by UID:", error);
-    throw new Error("Failed to fetch channel by UID");
+    console.error("Error fetching channel by UID:", error)
+    throw new Error("Failed to fetch channel by UID")
   }
-};
+}
 
-module.exports.getChannelById = async (id) => {
+// Fetch a channel by its ID
+const getChannelById = async (id) => {
   try {
-    return await Channel.findById(id);
+    return await Channel.findById(id)
   } catch (error) {
-    console.error("Error while fetching channel by ID:", error);
-    throw new Error("Failed to fetch channel by ID");
+    console.error("Error fetching channel by ID:", error)
+    throw new Error("Failed to fetch channel by ID")
   }
-};
+}
 
-module.exports.getSubscription = async ({ subscriber, channel }) => {
+// Fetch a subscription by subscriber and channel
+const getSubscription = async ({ subscriber, channel }) => {
   try {
-    return await Subscription.findOne({ subscriber, channel });
+    return await Subscription.findOne({ subscriber, channel })
   } catch (error) {
-    console.error("Error while fetching Subscription:", error);
-    throw new Error("Failed to fetch Subscription");
+    console.error("Error fetching Subscription:", error)
+    throw new Error("Failed to fetch Subscription")
   }
-};
+}
 
-module.exports.getChannelAndSubscription = async (
-  req,
-  res,
-  isHandle = true
-) => {
+// Fetch channel and subscription information
+const getChannelAndSubscription = async (req, res, isHandle = true) => {
   try {
-    const currentChannel = isHandle
-      ? await getChannelByHandle(req.params[0])
-      : await getChannelByUid(req.params[0]);
+    const currentChannel = isHandle ? await getChannelByHandle(req.params[0]) : await getChannelByUid(req.params[0])
 
-    if (!currentChannel) res.redirect("/404");
+    if (!currentChannel) res.redirect("/404")
 
-    const subscription = await getSubscription({
-      subscriber: req.channel?.id,
-      channel: currentChannel.id,
-    });
+    const subscription = await getSubscription({ subscriber: req.channel?.id, channel: currentChannel.id })
 
-    res.render("devtube", { currentChannel, subscription, page: "channel" });
+    res.render("devtube", { currentChannel, subscription, page: 'channel' })
   } catch (error) {
-    console.error("Error fetching ", error);
-    throw new Error("Failed to fetch ");
+    console.error("Error fetching ", error)
+    throw new Error("Failed to fetch ")
   }
-};
+}
 
-module.exports.subscribeChannel = async (req, res) => {
-  if (!req.channel)
-    return res.status(401).json({ error: "Login to subscribe" });
+// Subscribe to a channel
+const subscribeChannel = async (req, res) => {
+  if (!req.channel) return res.status(401).json({ error: "Login to subscribe" })
 
   try {
-    const channel = await Channel.findOne({ uid: req.params.uid });
+    const channel = await Channel.findOne({ uid: req.params.uid })
 
-    if (!channel) return res.status(404).json({ error: "Channel not found" });
+    if (!channel) return res.status(404).json({ error: "Channel not found" })
 
+    // Check if the user is already subscribed
     if (req.channel.subscriptions.includes(channel.id)) {
-      return res
-        .status(400)
-        .json({ error: "Already subscribed to this channel" });
+      return res.status(400).json({ error: "Already subscribed to this channel" })
     }
 
     const subscription = await Subscription.create({
       subscriber: req.channel.id,
       channel: channel.id,
-      mode: "notification",
-    });
+      mode: "notification"
+    })
 
-    req.channel.subscriptions.push(subscription.id);
-    channel.subscribers.push(req.channel.id);
+    req.channel.subscriptions.push(subscription.id)
+    channel.subscribers.push(req.channel.id)
 
-    await req.channel.save();
-    await channel.save();
+    await req.channel.save()
+    await channel.save()
 
-    res.status(200).json({
-      success: true,
-      message: "Subscription successful! Welcome to the club",
-    });
+    res.status(200).json({ message: "Subscription successful! Welcome to the club 🎉" })
   } catch (error) {
-    console.error("Subscription error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Oops! Something went wrong while subscribing.",
-      error: error.message,
-    });
+    console.error("Subscription error:", error)
+    res.status(500).json({ error: "Oops! Something went wrong while subscribing." })
   }
-};
+}
 
-module.exports.unsubscribeChannel = async (req, res) => {
+// Unsubscribe from a channel
+const unsubscribeChannel = async (req, res) => {
   try {
-    const channel = await Channel.findOne({ uid: req.params.uid });
+    const channel = await Channel.findOne({ uid: req.params.uid })
 
-    if (!channel) return res.status(404).json({ error: "Channel not found" });
+    if (!channel) return res.status(404).json({ error: "Channel not found" })
 
-    const subscription = await getSubscription({
-      subscriber: req.channel.id,
-      channel: channel.id,
-    });
+    const subscription = await getSubscription({ subscriber: req.channel.id, channel: channel.id })
 
-    if (!subscription)
-      return res.status(404).json({ error: "Not subscribed to this channel" });
+    if (!subscription) return res.status(404).json({ error: "Not subscribed to this channel" })
 
-    req.channel.subscriptions.pull(subscription._id);
-    channel.subscribers.pull(subscription.subscriber);
+    req.channel.subscriptions.pull(subscription._id)
+    channel.subscribers.pull(subscription.subscriber)
 
-    await req.channel.save();
-    await channel.save();
-    await subscription.remove();
+    await req.channel.save()
+    await channel.save()
+    await subscription.remove()
 
-    res
-      .status(200)
-      .json({ success: false, message: "Unsubscribed successfully" });
+    res.status(200).json({ message: "Unsubscribed successfully" })
   } catch (error) {
-    console.error("Unsubscription error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong while unsubscribing.",
-      error: error.message,
-    });
+    console.error("Unsubscription error:", error)
+    res.status(500).json({ error: "Oops! Something went wrong while unsubscribing." })
   }
-};
+}
 
-module.exports.notificationsChannel = async (req, res) => {
+// Update notification settings for a subscription
+const notificationsChannel = async (req, res) => {
   try {
-    const channel = await Channel.findOne({ uid: req.params.uid });
+    const channel = await Channel.findOne({ uid: req.params.uid })
 
-    if (!channel) return res.status(404).json({ error: "Channel not found" });
+    if (!channel) return res.status(404).json({ error: "Channel not found" })
 
-    const subscription = await getSubscription({
-      subscriber: req.channel._id,
-      channel: channel._id,
-    });
+    const subscription = await getSubscription({ subscriber: req.channel._id, channel: channel._id })
 
-    if (!subscription)
-      return res.status(404).json({ error: "Not subscribed to this channel" });
+    if (!subscription) return res.status(404).json({ error: "Not subscribed to this channel" })
 
-    subscription.mode =
-      req.params.mode === "notification" ? "notification" : "silent";
+    subscription.mode = req.params.mode === "notification" ? "notification" : "silent"
 
-    await subscription.save();
+    await subscription.save()
 
-    res
-      .status(200)
-      .json({ success: false, message: "Notifications successfully updated" });
+    res.status(200).json({ message: "Notifications successfully updated" })
   } catch (error) {
-    console.error("Notifications error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Oops! Something went wrong while setting notifications.",
-      error: error.message,
-    });
+    console.error("Notifications error:", error)
+    res.status(500).json({ error: "Oops! Something went wrong while setting notifications." })
   }
-};
+}
+
+module.exports = {
+  updateChannel,
+  getSubscription,
+  createChannel,
+  getChannelByHandle,
+  getChannelAndSubscription,
+  notificationsChannel,
+  getChannelByUid,
+  getChannelById,
+  subscribeChannel,
+  unsubscribeChannel
+}
